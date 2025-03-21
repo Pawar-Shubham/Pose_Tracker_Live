@@ -1,10 +1,9 @@
 # nixpacks.toml
-nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd"]
+nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd", "glibc"]
 
 [phases.build]
 cmds = [
-  "pip install --no-cache-dir -r requirements.txt",
-  "apt-get update && apt-get install -y libgl1-mesa-glx"
+  "pip install --no-cache-dir -r requirements.txt"
 ]
 
 [start]
