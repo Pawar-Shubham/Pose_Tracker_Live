@@ -1,4 +1,10 @@
 # nixpacks.toml
+nixPkgs = ["python39"] # Set Python 3.9
+
+[phases.build]
+cmds = [
+  "pip install --no-cache-dir -r requirements.txt"
+]
 
 [start]
-cmd = "gunicorn api:app"
+cmd = "gunicorn api:app --bind 0.0.0.0:$PORT"
