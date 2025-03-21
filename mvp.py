@@ -130,7 +130,8 @@ class ExerciseTracker:
             "Tricep Dip": self.is_tricep_dip,
             "Tricep Pull-down": self.is_tricep_pull_down
         }
-        return state_functions[self.exercise_type[self.exercise_id]](angles)
+        return state_functions[self.exercise_type](angles)
+
 
     def check_good_posture(self, frame, angles, exercise_type, keypoints, landmarks):
         EXERCISE_LANDMARKS = {

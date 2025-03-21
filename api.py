@@ -1,5 +1,4 @@
 from flask import Flask, render_template, Response, request, session
-from waitress import serve
 import cv2
 import numpy as np
 import random
@@ -16,59 +15,37 @@ latest_frame = None  # Store the latest received frame
 
 @app.route('/receive_frame', methods=['POST'])
 def receive_frame():
+    global tracker, latest_frame
+    if tracker is None:
+        return Response("Tracker not initialized", status=500)  # Prevents crashes
+
     try:
         if not request.data:
             return Response("No frame data received", status=400)
 
-        
 
         # Convert raw binary data to NumPy array
         nparr = np.frombuffer(request.data, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        latest_frame = frame.copy()  # Store the modified frame so it’s used in `generate_frames()`
         if frame is None:
             return Response("Failed to decode image", status=400)
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        result = tracker.pose.process(rgb_frame) if tracker else None
+        result = tracker.pose.process(rgb_frame)
 
         if result and result.pose_landmarks:
             landmarks = result.pose_landmarks.landmark
-            angles, keypoints = tracker.get_angles_from_landmarks(landmarks)  # Extract angles
-            tracker.count_reps(frame, angles, result, landmarks, keypoints)  # Process exercise tracking
-        
-        _, buffer = cv2.imencode(".jpg", frame)
+            angles, keypoints = tracker.get_angles_from_landmarks(landmarks)
+            tracker.count_reps(frame, angles, result, landmarks, keypoints)
 
+        _, buffer = cv2.imencode(".jpg", frame)
         return Response(buffer.tobytes(), mimetype="image/jpeg")
 
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         return Response(f"Server Error: {str(e)}", status=500)
-
-def generate_frames():
-    global latest_frame, tracker
-    while True:
-        if latest_frame is None:
-            continue  # Wait until a frame is received
-
-        frame = latest_frame.copy()
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        result = tracker.pose.process(rgb_frame) if tracker else None
-
-        if result and result.pose_landmarks:
-            landmarks = result.pose_landmarks.landmark
-            angles,keypoints = tracker.get_angles_from_landmarks(landmarks)  # Extract angles
-            tracker.count_reps(frame, angles, result, landmarks, keypoints)  # Process exercise tracking
-
-        # Encode processed frame back to JPEG
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame_bytes = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' +
-               frame_bytes + b'\r\n')
-
 
 def generate_frames():
     global latest_frame, tracker
