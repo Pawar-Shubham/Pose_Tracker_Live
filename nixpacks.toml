@@ -3,7 +3,8 @@ nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd"]
 
 [phases.build]
 cmds = [
-  "pip install --no-cache-dir -r requirements.txt"
+  "pip install --no-cache-dir -r requirements.txt",
+  "apt-get update && apt-get install -y libgl1-mesa-glx"
 ]
 
 [start]
