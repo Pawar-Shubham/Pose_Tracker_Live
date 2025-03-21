@@ -17,7 +17,7 @@ frame_counter = 0  # Initialize the counter globally
 
 @app.route('/receive_frame', methods=['POST'])
 def receive_frame():
-    global tracker, latest_frame, frame_counter  # Make sure to reference the global frame_counter
+    global tracker, latest_frame, frame_counter  # Use global to access frame_counter
 
     if tracker is None:
         return Response("Tracker not initialized", status=500)  # Prevents crashes
@@ -36,6 +36,7 @@ def receive_frame():
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = tracker.pose.process(rgb_frame)
+        frame = cv2.resize(frame, (640, 480))  # Resize frame to smaller resolution
 
         if result and result.pose_landmarks:
             landmarks = result.pose_landmarks.landmark
@@ -44,8 +45,29 @@ def receive_frame():
 
         # Skip frames by checking the frame_counter
         if frame_counter % 2 == 0:  # Skip every second frame
-            _, buffer = cv2.imencode(".jpg", frame)
+            _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])  # Lower quality to speed up encoding
             return Response(buffer.tobytes(), mimetype="image/jpeg")
+
+        # Increment the frame counter for every received frame
+        frame_counter += 1
+
+        # Call the generator function to stream frames
+        return Response(generate(frame), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return Response(f"Server Error: {str(e)}", status=500)
+
+
+def generate(frame):
+    global frame_counter  # Use global here to modify frame_counter
+    try:
+        # Skip frames by checking the frame_counter
+        if frame_counter % 2 == 0:  # Skip every second frame
+            _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])  # Lower quality to speed up encoding
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n\r\n')
 
         # Increment the frame counter for every received frame
         frame_counter += 1
@@ -53,8 +75,9 @@ def receive_frame():
     except Exception as e:
         import traceback
         print(traceback.format_exc())
-        return Response(f"Server Error: {str(e)}", status=500)
-
+        yield (b'--frame\r\n'
+               b'Content-Type: text/plain\r\n\r\n' + str(e).encode() + b'\r\n\r\n')
+        
 def generate_frames():
     global latest_frame, tracker
     while True:
