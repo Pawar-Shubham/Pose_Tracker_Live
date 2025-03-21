@@ -13,9 +13,12 @@ exercises = None
 latest_frame = None  # Store the latest received frame
 
 
+frame_counter = 0  # Initialize the counter globally
+
 @app.route('/receive_frame', methods=['POST'])
 def receive_frame():
-    global tracker, latest_frame
+    global tracker, latest_frame, frame_counter  # Make sure to reference the global frame_counter
+
     if tracker is None:
         return Response("Tracker not initialized", status=500)  # Prevents crashes
 
@@ -23,13 +26,13 @@ def receive_frame():
         if not request.data:
             return Response("No frame data received", status=400)
 
-
         # Convert raw binary data to NumPy array
         nparr = np.frombuffer(request.data, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         if frame is None:
             return Response("Failed to decode image", status=400)
-        latest_frame = frame.copy()  # Store the modified frame so it’s used in `generate_frames()`
+
+        latest_frame = frame.copy()  # Store the modified frame so it’s used in generate_frames()
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = tracker.pose.process(rgb_frame)
@@ -39,8 +42,13 @@ def receive_frame():
             angles, keypoints = tracker.get_angles_from_landmarks(landmarks)
             tracker.count_reps(frame, angles, result, landmarks, keypoints)
 
-        _, buffer = cv2.imencode(".jpg", frame)
-        return Response(buffer.tobytes(), mimetype="image/jpeg")
+        # Skip frames by checking the frame_counter
+        if frame_counter % 2 == 0:  # Skip every second frame
+            _, buffer = cv2.imencode(".jpg", frame)
+            return Response(buffer.tobytes(), mimetype="image/jpeg")
+
+        # Increment the frame counter for every received frame
+        frame_counter += 1
 
     except Exception as e:
         import traceback
