@@ -27,9 +27,9 @@ def receive_frame():
         # Convert raw binary data to NumPy array
         nparr = np.frombuffer(request.data, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        latest_frame = frame.copy()  # Store the modified frame so it’s used in `generate_frames()`
         if frame is None:
             return Response("Failed to decode image", status=400)
+        latest_frame = frame.copy()  # Store the modified frame so it’s used in `generate_frames()`
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = tracker.pose.process(rgb_frame)
@@ -111,4 +111,4 @@ def upload_video():
 
 
 if __name__ == '__main__':
-    app.run(debug=True) #uncomment to use flask development server
+    app.run(debug=True) #uncomment to use flask development server  
