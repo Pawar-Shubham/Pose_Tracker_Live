@@ -3,6 +3,7 @@ nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd", "libglvnd.dev",
 
 [phases.build]
 cmds = [
+  "pip uninstall opencv-python",
   "pip install --no-cache-dir -r requirements.txt"
 ]
 
