@@ -66,15 +66,56 @@ class ExerciseTracker:
         self.bad_posture = True
         return "In Progress"
 
-    def is_hammer_curl(self, angles):
-        left_status = "Up" if angles['left_elbow'] < 90 else "Down" if angles['left_elbow'] > 110 else "In Progress"
-        right_status = "Up" if angles['right_elbow'] < 90 else "Down" if angles['right_elbow'] > 110 else "In Progress"
+    # def is_hammer_curl(self, angles):
+    #     left_status = "Up" if angles['left_elbow'] < 90 else "Down" if angles['left_elbow'] > 110 else "In Progress"
+    #     right_status = "Up" if angles['right_elbow'] < 90 else "Down" if angles['right_elbow'] > 110 else "In Progress"
         
+    #     if left_status != right_status:
+    #         self.bad_posture = True
+    #         return "Asymmetrical Movement"
+    #     self.bad_posture = False
+    #     return left_status
+
+    def is_hammer_curl(self, keypoints):
+        # Check wrist position relative to shoulder and hip
+        left_wrist_y = keypoints["LEFT_WRIST"][1]  # Y-coordinate of left wrist
+        right_wrist_y = keypoints["RIGHT_WRIST"][1]  # Y-coordinate of right wrist
+        left_shoulder_y = keypoints["LEFT_SHOULDER"][1]  # Y-coordinate of left shoulder
+        right_shoulder_y = keypoints["RIGHT_SHOULDER"][1]  # Y-coordinate of right shoulder
+        left_hip_y = keypoints["LEFT_HIP"][1]  # Y-coordinate of left hip
+        right_hip_y = keypoints["RIGHT_HIP"][1]  # Y-coordinate of right hip
+        
+        # Define a small tolerance to account for slight variations in wrist/shoulder/hip level
+        tolerance = 0.10  # Increased tolerance for detecting wrist level with shoulder/hip
+
+        # Determine left arm status
+        if abs(left_wrist_y - left_shoulder_y) <= tolerance:  # If wrist is close to shoulder
+            left_status = "Up"
+            print("up",left_wrist_y , left_shoulder_y)
+        elif abs(left_wrist_y - left_hip_y) <= tolerance:  # If wrist is close to hip
+            left_status = "Down"
+            print("Down")
+        else:
+            print("IN PROGRESS")
+            left_status = "In Progress"
+
+        # Determine right arm status
+        if abs(right_wrist_y - right_shoulder_y) <= tolerance:  # If wrist is close to shoulder
+            right_status = "Up"
+        elif abs(right_wrist_y - right_hip_y) <= tolerance:  # If wrist is close to hip
+            right_status = "Down"
+        else:
+            right_status = "In Progress"
+
+        # Check if the movement is symmetrical
         if left_status != right_status:
             self.bad_posture = True
             return "Asymmetrical Movement"
+        
         self.bad_posture = False
         return left_status
+
+
 
     def is_tricep_dip(self, angles):
         left_status = "Down" if angles['left_elbow'] < 110 else "Up" if angles['left_elbow'] > 130 else "In Progress"
@@ -86,21 +127,67 @@ class ExerciseTracker:
         self.bad_posture = False
         return left_status
 
-    def is_tricep_pull_down(self, angles):
-        left_elbow_down = angles['left_elbow'] > 130
-        right_elbow_down = angles['right_elbow'] > 130
-        left_elbow_up = angles['left_elbow'] < 80
-        right_elbow_up = angles['right_elbow'] < 80
+    # def is_tricep_pull_down(self, angles):
+    #     left_elbow_down = angles['left_elbow'] > 130
+    #     right_elbow_down = angles['right_elbow'] > 130
+    #     left_elbow_up = angles['left_elbow'] < 80
+    #     right_elbow_up = angles['right_elbow'] < 80
 
-        if left_elbow_down and right_elbow_down:
+    #     if left_elbow_down and right_elbow_down:
+    #         self.bad_posture = False
+    #         return "Down"
+    #     elif left_elbow_up and right_elbow_up:
+    #         self.bad_posture = False
+    #         return "Up"
+        
+    #     self.bad_posture = True
+    #     return "In Progress"
+
+    def is_tricep_pull_down(self, keypoints):
+        # Extract wrist, shoulder, and hip keypoints from keypoints dictionary
+        left_wrist = keypoints["LEFT_WRIST"]
+        right_wrist = keypoints["RIGHT_WRIST"]
+        left_shoulder = keypoints["LEFT_SHOULDER"]
+        right_shoulder = keypoints["RIGHT_SHOULDER"]
+        left_hip = keypoints["LEFT_HIP"]
+        right_hip = keypoints["RIGHT_HIP"]
+
+        # Define a threshold for how close x-coordinates should be
+        x_threshold = 0.10  
+        y_threshold = 0.10  
+
+        # Check if wrists are near shoulders (UP position)
+        left_wrist_near_shoulder = (
+            abs(left_wrist[0] - left_shoulder[0]) < x_threshold and
+            abs(left_wrist[1] - left_shoulder[1]) < y_threshold
+        )
+        right_wrist_near_shoulder = (
+            abs(right_wrist[0] - right_shoulder[0]) < x_threshold and
+            abs(right_wrist[1] - right_shoulder[1]) < y_threshold
+        )
+
+        # Check if wrists are near hips (DOWN position)
+        left_wrist_near_hip = (
+            abs(left_wrist[0] - left_hip[0]) < x_threshold and
+            abs(left_wrist[1] - left_hip[1]) < y_threshold
+        )
+        right_wrist_near_hip = (
+            abs(right_wrist[0] - right_hip[0]) < x_threshold and
+            abs(right_wrist[1] - right_hip[1]) < y_threshold
+        )
+
+        # Determine exercise state
+        if left_wrist_near_hip and right_wrist_near_hip:
             self.bad_posture = False
             return "Down"
-        elif left_elbow_up and right_elbow_up:
+        elif left_wrist_near_shoulder and right_wrist_near_shoulder:
             self.bad_posture = False
             return "Up"
-        
+
         self.bad_posture = True
         return "In Progress"
+
+
 
     def calculate_calories(self, duration):
         #Assumes average calorie burn rates for different exercises.
@@ -130,8 +217,7 @@ class ExerciseTracker:
             "Tricep Dip": self.is_tricep_dip,
             "Tricep Pull-down": self.is_tricep_pull_down
         }
-        return state_functions[self.exercise_type](angles)
-
+        return state_functions[self.exercise_type[self.exercise_id]](angles)
 
     def check_good_posture(self, frame, angles, exercise_type, keypoints, landmarks):
         EXERCISE_LANDMARKS = {
@@ -197,22 +283,40 @@ class ExerciseTracker:
             return True  
 
         elif exercise_type == "Hammer Curl":
+            display_message(frame, f"{angles['left_shoulder']}", (50, 130))
             if not (0 < angles['left_elbow'] < 180 and 0 < angles['right_elbow'] < 180):
                 display_message(frame, "Elbow angle incorrect", (50, 70))
+                self.in_progress = False #reset
                 return False
 
             if keypoints["LEFT_ELBOW"][1] < keypoints["LEFT_SHOULDER"][1] or keypoints["RIGHT_ELBOW"][1] < keypoints["RIGHT_SHOULDER"][1]:
                 display_message(frame, "Elbow is above shoulder", (50, 90))
+                self.in_progress = False #reset
                 return False
 
             if keypoints["LEFT_WRIST"][1] < keypoints["LEFT_SHOULDER"][1] or keypoints["RIGHT_WRIST"][1] < keypoints["RIGHT_SHOULDER"][1]:
                 display_message(frame, "Wrist is above shoulder", (50, 110))
+                self.in_progress = False #reset
                 return False
 
             left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
             right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
             if not (left_arm_facing_inward and right_arm_facing_inward):
                 display_message(frame, "Arms are not facing inward", (50, 130))
+                self.in_progress = False #reset
+                return False
+            
+            left_shoulder_angle = angles['left_shoulder']  # Left shoulder angle
+            right_shoulder_angle = angles['right_shoulder']  # Right shoulder angle
+
+            if abs(left_shoulder_angle - right_shoulder_angle) > 20:
+                display_message(frame, "Shoulder angles difference is greater than 20 degrees", (50, 130))
+                self.in_progress = False  # Reset
+                return False
+            
+            if left_shoulder_angle > 20 or right_shoulder_angle > 20:
+                display_message(frame, "Shoulder angle cannot be greater than 10 degrees", (50, 100))
+                self.in_progress = False  # Reset
                 return False
 
             return True  
@@ -236,6 +340,7 @@ class ExerciseTracker:
             if not (left_arm_facing_inward and right_arm_facing_inward):
                 display_message(frame, "Arms are not facing inward", (50, 130))
                 return False
+        
 
             return True  
 
@@ -256,7 +361,7 @@ class ExerciseTracker:
             return True  
 
         elif exercise_type == "Tricep Pull-down":
-            if not (20 < angles['left_elbow'] < 170 and 20 < angles['right_elbow'] < 170):
+            if not (0 < angles['left_elbow'] < 180 and 0 < angles['right_elbow'] < 180):
                 display_message(frame, "Elbow angle incorrect", (50, 70))
                 return False
 
@@ -269,6 +374,11 @@ class ExerciseTracker:
             if not (140 < angles['left_hip_angle'] < 180 and 140 < angles['right_hip_angle'] < 180):
                 display_message(frame, "Not standing straight", (50, 110))
                 return False
+            
+            if abs(angles['left_shoulder']) > 20 or abs(angles['right_shoulder']) > 20:
+                display_message(frame, "Shoulders are not aligned", (50, 130))
+                return False
+
 
             return True  
 
@@ -318,11 +428,11 @@ class ExerciseTracker:
         elif self.exercise_type == "Pull-up":
             exercise_state = self.is_pull_up(angles)
         elif self.exercise_type == "Hammer Curl":
-            exercise_state = self.is_hammer_curl(angles)
+            exercise_state = self.is_hammer_curl(keypoints)
         elif self.exercise_type == "Tricep Dip":
             exercise_state = self.is_tricep_dip(angles)
         elif self.exercise_type == "Tricep Pull-down":
-            exercise_state = self.is_tricep_pull_down(angles)
+            exercise_state = self.is_tricep_pull_down(keypoints)
 
         # Plank Timer 
         if self.exercise_type == "Plank":
