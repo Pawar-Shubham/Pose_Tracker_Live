@@ -23,6 +23,7 @@ class ExerciseTracker:
         self.exercise_duration = 0
         self.prev_status = None
         self.shaky_frames = 0
+        self.posture_intact = False
 
     #Calculating angle between the points
     def calculate_angle_3d(self, a, v, b):
@@ -113,6 +114,13 @@ class ExerciseTracker:
             return "Asymmetrical Movement"
         
         self.bad_posture = False
+        if left_status == "Up":
+            if self.posture_intact:
+                self.in_progress = True
+            else:
+                self.in_progress = False
+        if left_status == "Down":
+            self.posture_intact = True  
         return left_status
 
 
@@ -179,9 +187,14 @@ class ExerciseTracker:
         # Determine exercise state
         if left_wrist_near_hip and right_wrist_near_hip:
             self.bad_posture = False
+            if self.posture_intact:
+                self.in_progress = True
+            else:
+                self.in_progress = False
             return "Down"
         elif left_wrist_near_shoulder and right_wrist_near_shoulder:
             self.bad_posture = False
+            self.posture_intact = True
             return "Up"
 
         self.bad_posture = True
@@ -299,12 +312,12 @@ class ExerciseTracker:
                 self.in_progress = False #reset
                 return False
 
-            left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
-            right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
-            if not (left_arm_facing_inward and right_arm_facing_inward):
-                display_message(frame, "Arms are not facing inward", (50, 130))
-                self.in_progress = False #reset
-                return False
+            # left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
+            # right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
+            # if not (left_arm_facing_inward and right_arm_facing_inward):
+            #     display_message(frame, "Arms are not facing inward", (50, 130))
+            #     self.in_progress = False #reset
+            #     return False
             
             left_shoulder_angle = angles['left_shoulder']  # Left shoulder angle
             right_shoulder_angle = angles['right_shoulder']  # Right shoulder angle
@@ -335,11 +348,11 @@ class ExerciseTracker:
                 display_message(frame, "Wrist is above elbow", (50, 110))
                 return False
 
-            left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
-            right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
-            if not (left_arm_facing_inward and right_arm_facing_inward):
-                display_message(frame, "Arms are not facing inward", (50, 130))
-                return False
+            # left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
+            # right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
+            # if not (left_arm_facing_inward and right_arm_facing_inward):
+            #     display_message(frame, "Arms are not facing inward", (50, 130))
+            #     return False
         
 
             return True  
@@ -363,20 +376,23 @@ class ExerciseTracker:
         elif exercise_type == "Tricep Pull-down":
             if not (0 < angles['left_elbow'] < 180 and 0 < angles['right_elbow'] < 180):
                 display_message(frame, "Elbow angle incorrect", (50, 70))
+                self.in_progress = False
                 return False
 
-            left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
-            right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
-            if not (left_arm_facing_inward and right_arm_facing_inward):
-                display_message(frame, "Arms are not facing inward", (50, 90))
-                return False
+            # left_arm_facing_inward = keypoints["LEFT_WRIST"][0] < keypoints["LEFT_ELBOW"][0]
+            # right_arm_facing_inward = keypoints["RIGHT_WRIST"][0] > keypoints["RIGHT_ELBOW"][0]
+            # if not (left_arm_facing_inward and right_arm_facing_inward):
+            #     display_message(frame, "Arms are not facing inward", (50, 90))
+            #     return False
 
             if not (140 < angles['left_hip_angle'] < 180 and 140 < angles['right_hip_angle'] < 180):
                 display_message(frame, "Not standing straight", (50, 110))
+                self.in_progress = False
                 return False
             
             if abs(angles['left_shoulder']) > 20 or abs(angles['right_shoulder']) > 20:
                 display_message(frame, "Shoulders are not aligned", (50, 130))
+                self.in_progress = False
                 return False
 
 
@@ -393,7 +409,29 @@ class ExerciseTracker:
         self.landmarks = landmarks
         mp.solutions.drawing_utils.draw_landmarks(frame, result.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
         exercise_state = ""
+        posture_color = (0, 255, 0) if self.posture_intact else (0, 0, 255)  # Green if True, Red if False
 
+        # Display "Posture Intact" message with the appropriate color
+        cv2.putText(
+            frame,
+            f"Posture Intact : {str(self.posture_intact)}",
+            (10, 200),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            posture_color,
+            2,
+            cv2.LINE_AA
+        )
+        cv2.putText(
+            frame,
+            f'Time: {self.elapsed_time}' if self.exercise_type == "Plank" else f'Reps: {self.rep_count}',
+            (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,   
+            1,
+            (0, 255, 0),
+            2,
+            cv2.LINE_AA
+        )
         # rsequired_landmark_indices = [11, 12, 13, 14, 23, 24, 25, 26, 27, 28]  # Shoulders, elbows, hips, knees, ankles
     
         # Check if all required landmarks are visible
@@ -416,6 +454,7 @@ class ExerciseTracker:
 
         if not self.check_good_posture(frame, angles, self.exercise_type, keypoints, landmarks):
             cv2.putText(frame, 'Posture Incorrect', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            self.posture_intact = False
             return  # Don't count rep if posture is bad
         
         else:
@@ -434,6 +473,14 @@ class ExerciseTracker:
         elif self.exercise_type == "Tricep Pull-down":
             exercise_state = self.is_tricep_pull_down(keypoints)
 
+        if exercise_state == "Up" or exercise_state == "Down":
+            if exercise_state == self.prev_status:
+                print("Returned")
+                return
+            print("exercise state : -",exercise_state)
+            self.prev_status = exercise_state
+
+
         # Plank Timer 
         if self.exercise_type == "Plank":
             if exercise_state == "Plank" and not self.plank_timer_running:
@@ -445,7 +492,7 @@ class ExerciseTracker:
             if self.plank_timer_running:
                 self.elapsed_time = int(time.time() - self.plank_start_time)
                 self.rep_count = self.elapsed_time
-                cv2.putText(frame, f'Time: {self.elapsed_time}s', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                # cv2.putText(frame, f'Time: {self.elapsed_time}s', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
         # rep count logic
         elif self.exercise_type == "Pull-up":
@@ -467,31 +514,27 @@ class ExerciseTracker:
 
         elif self.exercise_type == "Tricep Pull-down":
             if exercise_state == "Down" and not self.in_progress:
-                self.rep_count += 1
                 self.in_progress = True
             elif exercise_state == "Up" and self.in_progress:
+                if self.posture_intact == True:
+                    self.rep_count += 1  # Count a rep when returning from curl to extended position
+                self.posture_intact = True  
                 self.in_progress = False
 
         elif self.exercise_type == "Hammer Curl":
             if exercise_state == "Up" and not self.in_progress:
                 self.in_progress = True  # tracking the curl motion
             elif exercise_state == "Down" and self.in_progress:
-                self.rep_count += 1  # Count a rep when returning from curl to extended position
+                if self.posture_intact == True:
+                    self.rep_count += 1  # Count a rep when returning from curl to extended position
                 self.in_progress = False #reset
+                self.posture_intact = True
 
         elif self.exercise_type == "Tricep Dip":
             if exercise_state == "Down" and not self.in_progress:
                 self.rep_count += 1
                 self.in_progress = True
             elif exercise_state == "Up" and self.in_progress:
-                self.in_progress = False
-
-        else:
-            #to handle unexpected inputs
-            if exercise_state == f"{self.exercise_type} Down" and not self.in_progress:
-                self.rep_count += 1
-                self.in_progress = True
-            elif exercise_state == f"{self.exercise_type} Up" and self.in_progress:
                 self.in_progress = False
 
         if self.start_time is None:
@@ -501,10 +544,14 @@ class ExerciseTracker:
             elapsed_time = time.time() - self.start_time  #time recorded
             self.exercise_duration = elapsed_time
             self.calories_burned = self.calculate_calories(elapsed_time) #estimating calories based on time duration not that accurate though will update it on the basis of reps later!
+        # Always display time for Plank, otherwise display rep count
         
-        if self.exercise_type != "Plank":
-            cv2.putText(frame, f'Reps: {self.rep_count}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    
+
+
+        # if self.exercise_type == "Plank":
+        #     cv2.putText(frame, f'Time: {self.elapsed_time}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+        # else:
+        #     cv2.putText(frame, f'Reps: {self.rep_count}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     # def get_angles_from_landmarks(self, landmarks):
     #     keypoints = {part: [landmarks[getattr(self.mp_pose.PoseLandmark, part).value].x,
     #                         landmarks[getattr(self.mp_pose.PoseLandmark, part).value].y] 
