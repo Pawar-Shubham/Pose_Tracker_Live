@@ -1,5 +1,5 @@
 # nixpacks.toml
-nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd", "glibc"]
+nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd", "libglvnd.dev", "libx11", "libxext", "libxrender"]
 
 [phases.build]
 cmds = [
