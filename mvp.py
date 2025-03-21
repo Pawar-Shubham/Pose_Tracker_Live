@@ -296,7 +296,6 @@ class ExerciseTracker:
             return True  
 
         elif exercise_type == "Hammer Curl":
-            display_message(frame, f"{angles['left_shoulder']}", (50, 130))
             if not (0 < angles['left_elbow'] < 180 and 0 < angles['right_elbow'] < 180):
                 display_message(frame, "Elbow angle incorrect", (50, 70))
                 self.in_progress = False #reset
