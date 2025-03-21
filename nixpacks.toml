@@ -1,5 +1,5 @@
 # nixpacks.toml
-nixPkgs = ["python39"] # Set Python 3.9
+nixPkgs = ["python39", "opencv", "mesa", "mesa_glu", "libglvnd"]
 
 [phases.build]
 cmds = [
